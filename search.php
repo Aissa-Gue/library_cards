@@ -2,24 +2,56 @@
 include 'header.php';
 
 // input values
-if (!isset($_POST['search'])) {
-    $soft_id = '';
-    $lname = '';
-    $fname = '';
-    $order = '';
-} else {
+$soft_id = '';
+$lname = '';
+$fname = '';
+$order = '';
+
+if (isset($_POST['search']) or isset($_POST['prev_page']) or isset($_POST['next_page'])) {
     $soft_id = $_POST['soft_id'];
     $lname = $_POST['lname'];
     $fname = $_POST['fname'];
     $order =  $_POST['order_by'];
 }
 // Search query
-$searchQuery = "SELECT * FROM students WHERE stud_id LIKE '%$soft_id' AND lname LIKE '%$lname%' AND fname LIKE '%$fname%' AND sex = '$sex' $order";
+$searchQry = "SELECT * FROM students 
+    WHERE stud_id LIKE '%$soft_id' 
+    AND lname LIKE '%$lname%' 
+    AND fname LIKE '%$fname%' 
+    AND sex = '$sex' $order";
 
 
-$searchResult = mysqli_query($conn, $searchQuery);
+$searchResult = mysqli_query($conn, $searchQry);
 // search num rows
 $search_num_rows = mysqli_num_rows($searchResult);
+
+//************* Start pagination ********************//
+$results_per_page = 15;
+//determine the total number of pages available  
+$number_of_page = ceil($search_num_rows / $results_per_page);
+
+if (!isset($_POST['next_page'])) {
+    $page = 1;
+} else {
+    $pageExplode = explode(' / ', $_POST['page']);
+    $page = $pageExplode[0];
+    if ($page < $number_of_page) $page++;
+    $page_first_result = ($page - 1) * $results_per_page;
+}
+if (isset($_POST['prev_page'])) {
+    $pageExplode = explode(' / ', $_POST['page']);
+    $page = $pageExplode[0];
+    if ($page > 1) $page--;
+    $page_first_result = ($page - 1) * $results_per_page;
+}
+//determine the sql LIMIT starting number for the results on the displaying page  
+$page_first_result = ($page - 1) * $results_per_page;
+
+$setLimit = " LIMIT " . $page_first_result . "," . $results_per_page;
+$searchQry = $searchQry . $setLimit;
+
+$searchResult = mysqli_query($conn, $searchQry);
+//************* END pagination ********************//
 
 
 ?>
@@ -28,7 +60,7 @@ $search_num_rows = mysqli_num_rows($searchResult);
     <div class="container-fluid my_background_search my_vh">
         <div class="row container-fluid justify-content-sm-center">
             <div class="col-sm-9">
-                <form action="search.php" method="post" enctype="multipart/form-data">
+                <form action="" method="post" enctype="multipart/form-data">
                     <div class="input-group mb-3 mt-4">
                         <span class="input-group-text">ترتيب حسب</span>
                         <select class="" name="order_by">
@@ -38,17 +70,20 @@ $search_num_rows = mysqli_num_rows($searchResult);
                             <option value="ORDER BY `lname`, 'fname' ASC" selected> الإسم</option>
                         </select>
                         <span class="input-group-text">@</span>
-                        <input type="text" class="form-control" placeholder="رقم التسجيل" name="soft_id">
+                        <input type="text" class="form-control" placeholder="رقم التسجيل" name="soft_id"
+                            value="<?php echo $soft_id ?>">
 
                         <span class="input-group-text">#</span>
-                        <input type="text" class="form-control" placeholder="أدخل اللقب" name="lname">
+                        <input type="text" class="form-control" placeholder="أدخل اللقب" name="lname"
+                            value="<?php echo $lname ?>">
 
                         <span class="input-group-text">#</span>
-                        <input type="text" class="form-control" placeholder="أدخل الإسم" name="fname">
+                        <input type="text" class="form-control" placeholder="أدخل الإسم" name="fname"
+                            value="<?php echo $fname ?>">
 
                         <input class="btn btn-primary" type="submit" name="search" value="بحث">
                     </div>
-                </form>
+                    <!--</form>-->
             </div>
         </div>
         <!-- END serch new -->
@@ -80,51 +115,93 @@ $search_num_rows = mysqli_num_rows($searchResult);
                     <?php
                     while ($row = mysqli_fetch_array($searchResult)) {
                     ?>
-                        <tr>
-                            <th scope="row" class="text-center"><?php echo $row['stud_id'] ?></th>
-                            <td class="text-center"><?php echo $row['soft_id'] ?></td>
-                            <?php if ($sex == 0) { ?>
-                                <td class="text-center"><?php echo
-                                                        $row['lname'] . '&nbsp;' . $row['fname'] . ' بنت ' . $row['father'] . ' بن ' . $row['grandpa'] ?>
-                                </td>
-                            <?php } else { ?>
-                                <td class="text-center"><?php echo
-                                                        $row['lname'] . '&nbsp;' . $row['fname'] . ' بن ' . $row['father'] . ' بن ' . $row['grandpa'] ?>
-                                </td>
-                            <?php } ?>
+                    <tr>
+                        <th scope="row" class="text-center"><?php echo $row['stud_id'] ?></th>
+                        <td class="text-center"><?php echo $row['soft_id'] ?></td>
+                        <?php if ($sex == 0) { ?>
+                        <td class="text-center">
+                            <?php echo
+                                    $row['lname'] . '&nbsp;' . $row['fname'] . ' بنت ' . $row['father'] . ' بن ' . $row['grandpa'] ?>
+                        </td>
+                        <?php } else { ?>
+                        <td class="text-center">
+                            <?php echo
+                                    $row['lname'] . '&nbsp;' . $row['fname'] . ' بن ' . $row['father'] . ' بن ' . $row['grandpa'] ?>
+                        </td>
+                        <?php } ?>
 
-                            <td class="text-center"><?php echo $row['birthdate'] ?></td>
-                            <td class="text-center"><?php echo $row['birthplace'] ?></td>
-                            <td class="text-center"><?php echo $row['address'] ?></td>
-                            <td class="text-center"><?php echo $row['engagement_date'] ?></td>
+                        <td class="text-center"><?php echo $row['birthdate'] ?></td>
+                        <td class="text-center"><?php echo $row['birthplace'] ?></td>
+                        <td class="text-center"><?php echo $row['address'] ?></td>
+                        <td class="text-center"><?php echo $row['engagement_date'] ?></td>
 
 
-                            <td class="text-center">
-                                <a class="btn btn-outline-success" href="preview.php?stud_id=<?php echo $row['stud_id'] ?>&soft_id=<?php echo $row['soft_id'] ?>&lname=<?php echo $row['lname'] ?>&fname=<?php echo $row['fname'] ?>&father=<?php echo $row['father'] ?>&grandpa=<?php echo $row['grandpa'] ?>&birthdate=<?php echo $row['birthdate'] ?>&birthplace=<?php echo $row['birthplace'] ?>&wali_lname=<?php echo $row['wali_lname'] ?>&wali_fname=<?php echo $row['wali_fname'] ?>&kinship=<?php echo $row['kinship'] ?>&job=<?php echo $row['job'] ?>&cultural_level=<?php echo $row['cultural_level'] ?>&establishment=<?php echo $row['establishment'] ?>&address=<?php echo $row['address'] ?>&engagement_date=<?php echo $row['engagement_date'] ?>&last_edit=<?php echo $row['last_edit'] ?>&phone=<?php echo $row['phone'] ?>&wali_phone=<?php echo $row['wali_phone'] ?>&notes=<?php echo $row['notes'] ?>">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-lines-fill" viewBox="0 0 16 16">
-                                        <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H1zM11 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4zm2 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2zm0 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2z" />
-                                    </svg> </a>
-                            </td>
-                            <td class="text-center">
-                                <a class="btn btn-outline-primary" href="edit.php?stud_id=<?php echo $row['stud_id'] ?>&soft_id=<?php echo $row['soft_id'] ?>&lname=<?php echo $row['lname'] ?>&fname=<?php echo $row['fname'] ?>&father=<?php echo $row['father'] ?>&grandpa=<?php echo $row['grandpa'] ?>&birthdate=<?php echo $row['birthdate'] ?>&birthplace=<?php echo $row['birthplace'] ?>&wali_lname=<?php echo $row['wali_lname'] ?>&wali_fname=<?php echo $row['wali_fname'] ?>&kinship=<?php echo $row['kinship'] ?>&job=<?php echo $row['job'] ?>&cultural_level=<?php echo $row['cultural_level'] ?>&establishment=<?php echo $row['establishment'] ?>&address=<?php echo $row['address'] ?>&phone=<?php echo $row['phone'] ?>&wali_phone=<?php echo $row['wali_phone'] ?>&notes=<?php echo $row['notes'] ?>">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16">
-                                        <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z" />
-                                    </svg>
-                                </a>
-                            </td>
-                            <td class="text-center">
-                                <a class="btn btn-outline-danger" href="delete.php?stud_id=<?php echo $row['stud_id'] ?>
+                        <td class="text-center">
+                            <a class="btn btn-outline-success"
+                                href="preview.php?stud_id=<?php echo $row['stud_id'] ?>&soft_id=<?php echo $row['soft_id'] ?>&lname=<?php echo $row['lname'] ?>&fname=<?php echo $row['fname'] ?>&father=<?php echo $row['father'] ?>&grandpa=<?php echo $row['grandpa'] ?>&birthdate=<?php echo $row['birthdate'] ?>&birthplace=<?php echo $row['birthplace'] ?>&wali_lname=<?php echo $row['wali_lname'] ?>&wali_fname=<?php echo $row['wali_fname'] ?>&kinship=<?php echo $row['kinship'] ?>&job=<?php echo $row['job'] ?>&cultural_level=<?php echo $row['cultural_level'] ?>&establishment=<?php echo $row['establishment'] ?>&address=<?php echo $row['address'] ?>&engagement_date=<?php echo $row['engagement_date'] ?>&last_edit=<?php echo $row['last_edit'] ?>&phone=<?php echo $row['phone'] ?>&wali_phone=<?php echo $row['wali_phone'] ?>&notes=<?php echo $row['notes'] ?>">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-person-lines-fill" viewBox="0 0 16 16">
+                                    <path
+                                        d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H1zM11 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5zm.5 2.5a.5.5 0 0 0 0 1h4a.5.5 0 0 0 0-1h-4zm2 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2zm0 3a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1h-2z" />
+                                </svg> </a>
+                        </td>
+                        <td class="text-center">
+                            <a class="btn btn-outline-primary"
+                                href="edit.php?stud_id=<?php echo $row['stud_id'] ?>&soft_id=<?php echo $row['soft_id'] ?>&lname=<?php echo $row['lname'] ?>&fname=<?php echo $row['fname'] ?>&father=<?php echo $row['father'] ?>&grandpa=<?php echo $row['grandpa'] ?>&birthdate=<?php echo $row['birthdate'] ?>&birthplace=<?php echo $row['birthplace'] ?>&wali_lname=<?php echo $row['wali_lname'] ?>&wali_fname=<?php echo $row['wali_fname'] ?>&kinship=<?php echo $row['kinship'] ?>&job=<?php echo $row['job'] ?>&cultural_level=<?php echo $row['cultural_level'] ?>&establishment=<?php echo $row['establishment'] ?>&address=<?php echo $row['address'] ?>&phone=<?php echo $row['phone'] ?>&wali_phone=<?php echo $row['wali_phone'] ?>&notes=<?php echo $row['notes'] ?>">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-pencil-fill" viewBox="0 0 16 16">
+                                    <path
+                                        d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z" />
+                                </svg>
+                            </a>
+                        </td>
+                        <td class="text-center">
+                            <a class="btn btn-outline-danger" href="delete.php?stud_id=<?php echo $row['stud_id'] ?>
                             &fname=<?php echo $row['fname'] ?>'" onclick="return confirm('هل أنت متأكد؟')">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
-                                        <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z" />
-                                    </svg>
-                                </a>
-                            </td>
-                        </tr>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-trash-fill" viewBox="0 0 16 16">
+                                    <path
+                                        d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z" />
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
                     <?php }
                     ?>
                 </tbody>
             </table>
+
+            <!-- START pagination -->
+            <!-- <form action="" method="post" id="prev_pageForm">-->
+            <nav class="pb-2">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item">
+                        <?php if ($sex == 1) { ?>
+                        <button type="submit" name="prev_page" class="btn btn-primary">الصفحة السابقة</button>
+                        <?php } elseif ($sex == 0) { ?>
+                        <button type="submit" name="prev_page" class="btn btn-danger">الصفحة السابقة</button>
+                        <?php } ?>
+                    </li>
+                    <li class="page-item">
+                        <?php if ($sex == 1) { ?>
+                        <input type="text" name="page" class="page-link text-center bg-light text-primary"
+                            aria-disabled="true" value="<?php echo $page . ' / ' . $number_of_page ?>" readonly>
+                        <?php } elseif ($sex == 0) { ?>
+                        <input type="text" name="page" class="page-link text-center bg-light text-danger"
+                            aria-disabled="true" value="<?php echo $page . ' / ' . $number_of_page ?>" readonly>
+                        <?php } ?>
+                    </li>
+                    <li class="page-item">
+                        <?php if ($sex == 1) { ?>
+                        <button type="submit" name="next_page" class="btn btn-primary">الصفحة التالية</button>
+                        <?php } elseif ($sex == 0) { ?>
+                        <button type="submit" name="next_page" class="btn btn-danger">الصفحة التالية</button>
+                        <?php } ?>
+                    </li>
+                </ul>
+            </nav>
+            <!-- END pagination -->
+            </form>
         </div>
     </div>
     <!-- END body table -->
